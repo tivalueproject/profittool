@@ -16,7 +16,7 @@ class ProfitTool(object):
         self.wrapper = chain.api_wrapper
         self.address = address
         self.fee_rate = fee_rate
-        self.titles = ['chain_name', 'address', 'start_height', 'end_height', 'minting_total', 'fee_rate', 'minting_average_balance']
+        self.titles = ['chain_name', 'address', 'start_height', 'end_height', 'minting_total', 'fee_rate', 'minting_average_balance', 'available_balance', 'leases_total', 'leases_ratio', 'amount_to_pay']
         self.headers = ['lease_id', 'address', 'lease_height', 'amount', 'amount_to_pay']
 
     def calculate_minting_total(self, start_height, end_height):
@@ -76,6 +76,7 @@ class ProfitTool(object):
             msg = "Failed to get activeLeaseList. ({})".format(ex)
             pytvspos.throw_error(msg, NetworkException)
         self.leases_to_pay = []
+        self.leases_total = 0
         for leaseidx in range(len(resp[0])):
             lease = resp[0][leaseidx]
             if lease['recipient']==self.address and lease['type']==3 and lease['height']<last_height:
@@ -86,6 +87,7 @@ class ProfitTool(object):
                 lease_to_pay['lease_height'] = lease['height']
                 lease_to_pay['amount'] = lease['amount']
                 self.leases_to_pay.append(lease_to_pay)
+                self.leases_total += lease_to_pay['amount']
         #print("======================================")
         #print(self.leases_to_pay)
 
@@ -98,6 +100,7 @@ class ProfitTool(object):
             logging.debug(resp)
             #print(resp)
             self.minting_average_balance = resp['mintingAverage']
+            self.available_balance = resp['available']
             #print(self.minting_average_balance)
             return None
         except Exception as ex:
@@ -106,15 +109,17 @@ class ProfitTool(object):
             return 0
 
     def calculate_amount_to_pay(self):
+        if self.leases_total<=0:
+            return
+        self.amount_to_pay_total = (self.leases_total / (self.available_balance + self.leases_total)) * self.minting_total * (1-self.fee_rate)
+
         for leaseidx in range(len(self.leases_to_pay)):
             lease = self.leases_to_pay[leaseidx]
             #print("(", lease['amount'], "/", self.minting_average_balance, ")",  "*", self.minting_total, "* ( 1 - ", self.fee_rate, ")")
-            amount_to_pay = int((lease['amount'] / self.minting_average_balance) * self.minting_total * (1-self.fee_rate))
+            amount_to_pay = int((lease['amount'] / self.leases_total) * self.amount_to_pay_total)
             #print(lease['address'], amount_to_pay)
             lease['amount_to_pay'] = amount_to_pay
-
         #print(self.leases_to_pay)
-
 
     def calculate_profits(self, last_height, confirmations):
         start_height = last_height+1
@@ -193,6 +198,10 @@ class ProfitTool(object):
         sheet.col(4).width = 3500
         sheet.col(5).width = 2000
         sheet.col(6).width = 6000
+        sheet.col(7).width = 4000
+        sheet.col(8).width = 4000
+        sheet.col(9).width = 4000
+        sheet.col(10).width = 4000
 
         # set title line
         i = 0
@@ -206,6 +215,10 @@ class ProfitTool(object):
         sheet.write(1, 4, self.minting_total, contentstyle) 
         sheet.write(1, 5, self.fee_rate, contentstyle) 
         sheet.write(1, 6, self.minting_average_balance, contentstyle) 
+        sheet.write(1, 7, self.available_balance, contentstyle) 
+        sheet.write(1, 8, self.leases_total, contentstyle) 
+        sheet.write(1, 9, xlwt.Formula('=I2/(H2+I2)', contentstyle))
+        sheet.write(1, 10, xlwt.Formula('=E2*J2*(1-F2)', contentstyle))
 
         # set headers
         sheet.write(2, 0, 'lease_id', titlestyle) 
@@ -257,6 +270,10 @@ class ProfitTool(object):
         sheet.col(4).width = 3500
         sheet.col(5).width = 2000
         sheet.col(6).width = 6000
+        sheet.col(7).width = 4000
+        sheet.col(8).width = 4000
+        sheet.col(9).width = 4000
+        sheet.col(10).width = 4000
 
         # set title line
         i = 0
@@ -270,6 +287,10 @@ class ProfitTool(object):
         sheet.write(1, 4, self.minting_total, contentstyle) 
         sheet.write(1, 5, self.fee_rate, contentstyle) 
         sheet.write(1, 6, self.minting_average_balance, contentstyle) 
+        sheet.write(1, 7, self.available_balance, contentstyle) 
+        sheet.write(1, 8, self.leases_total, contentstyle) 
+        sheet.write(1, 9, xlwt.Formula('I2/(H2+I2)'), contentstyle)
+        sheet.write(1, 10, xlwt.Formula('E2*J2*(1-F2)'), contentstyle)
 
         # set headers
         i = 0
@@ -333,6 +354,9 @@ class ProfitTool(object):
         self.minting_total = int(table.cell(1,4).value)
         self.fee_rate = table.cell(1,5).value
         self.minting_average_balance = int(table.cell(1,6).value)
+        self.available_balance = int(table.cell(1,7).value)
+        self.leases_total = int(table.cell(1,8).value)
+
         self.leases_to_pay = []
         for r in range(3,rows-1):
             lease_to_pay = {}
@@ -377,6 +401,8 @@ class ProfitTool(object):
         print('minting_total:\t\t{0}'.format(self.minting_total))
         print('fee_rate:\t\t{0}'.format(self.fee_rate))
         print('minting_average_balance:\t\t{0}'.format(self.minting_average_balance))
+        print('available_balance:\t\t{0}'.format(self.available_balance))
+        print('leases_total:\t\t{0}'.format(self.leases_total))
         print('====================================')
     def print_leases_data(self):
         print('address\t\t\t\t\tlease_height\tamount\tamount_to_pay')
