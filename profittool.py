@@ -217,8 +217,8 @@ class ProfitTool(object):
         sheet.write(1, 6, self.minting_average_balance, contentstyle) 
         sheet.write(1, 7, self.available_balance, contentstyle) 
         sheet.write(1, 8, self.leases_total, contentstyle) 
-        sheet.write(1, 9, xlwt.Formula('I2/(H2+I2)', contentstyle))
-        sheet.write(1, 10, xlwt.Formula('E2*J2*(1-F2)', contentstyle))
+        sheet.write(1, 9, xlwt.Formula('I2/(H2+I2)'), contentstyle)
+        sheet.write(1, 10, xlwt.Formula('E2*J2*(1-F2)'), contentstyle)
 
         # set headers
         sheet.write(2, 0, 'lease_id', titlestyle) 
