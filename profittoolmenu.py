@@ -98,7 +98,7 @@ class Things():
                 private_key = input("Enter private key for sender: ")
             except Exception as e:
                 print("Invalid private key!");continue
-            isLenEnough = (len(private_key)>=44)
+            isLenEnough = (len(private_key)>=43)
             if not isLenEnough:
         	    print("Invalid private key:", private_key);continue
         self.pto.pay_profits(private_key)
